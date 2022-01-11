@@ -2,7 +2,7 @@
 "use strict";
 const csv=require("csvtojson");
 
-exports.makeplaydeck= async function(includeDescription)
+exports.makeplaydeck= async function(msg, cleaner)
 {
     var deckarray = [
         {smalltext: "2D :male_sign: (Gorillaz) **3 points**", description:"Hollow-eyed lead singer of an animated band.", score:3},
@@ -535,27 +535,38 @@ exports.makeplaydeck= async function(includeDescription)
     ];
 
     var data;   var cardList=[];
+    var check1=true; var msgContent="WARNINGS:";
     try{
         data=await csv().fromFile('./cards.csv');
-        var check=true;
-        if(thisSession.hasOwnProperty("Name"===false)){check=false;}
-        if(thisSession.hasOwnProperty("Gender"===false)){check=false;}
-        if(thisSession.hasOwnProperty("Origin"===false)){check=false;}
-        if(thisSession.hasOwnProperty("Score"===false)){check=false;}
-        if(check===false){data=[];}
+        if(data.length>0){
+            if(data[0].hasOwnProperty("Name")===false){check1=false;  msgContent=msgContent + "\nNew cards file cards.csv does not contain 'Name' field.";}
+            if(data[0].hasOwnProperty("Gender")===false){check1=false; msgContent=msgContent + "\nNew cards file cards.csv does not contain 'Gender' field."}
+            if(data[0].hasOwnProperty("Origin")===false){check1=false; msgContent=msgContent + "\nNew cards file cards.csv does not contain 'Origin' field."}
+            if(data[0].hasOwnProperty("Score")===false){check1=false; msgContent=msgContent + "\nNew cards file cards.csv does not contain 'Score' field."}
+            if(check1===false){data=[];}
+        }
     }catch{data=[];}
-    //check that titles exist!
+    var check2=true;
     for(var i=0;i<data.length;i++){
         var dataItem=data[i];
         var genderIcon = ParseGender(dataItem.Gender);
         var name = RemoveApostError(dataItem.Name);
         var origin = RemoveApostError(dataItem.Origin);
-        var description = thisSession.hasOwnProperty("Description") ? RemoveApostError(dataItem.Description) : "";
+        var description = dataItem.hasOwnProperty("Description") ? RemoveApostError(dataItem.Description) : "";
         var itemScore = Number(dataItem.Score);
-        if(isNaN(itemScore) || Number.isInteger(itemScore)===false){itemScore=1;}
-        //send warnings if gender doesn't match list or score isn't valid
+        if(isNaN(itemScore) || Number.isInteger(itemScore)===false){
+            itemScore=1;
+            check2=false;
+            msgContent = msgContent + "\nInvalid score for card " + name + " (" + origin + ")."
+        }
+        if(genderIcon==false){
+            genderIcon=":eight_spoked_asterisk:";
+            check2=false;
+            msgContent = msgContent + "\nInvalid gender for card " + name + " (" + origin + ")."
+        }
         cardList.push({smalltext: name + " " + genderIcon + " (" + origin + ") **" + itemScore + " point" + (itemScore==1 ? "" : "s") + "**", description: description, score: itemScore});
     }
+    if(!check1 || !check2){cleaner.sendReplyMessage(msg, "Other", msgContent);}
     AddInDescription(deckarray);
     AddInDescription(cardList);
     return deckarray.concat(cardList);
@@ -569,7 +580,8 @@ function ParseGender(stringIn){
             case "m": genderStr = genderStr + ":male_sign:"; break;
             case "f": genderStr = genderStr + ":female_sign:"; break;
             case "x": genderStr = genderStr + ":transgender_symbol:"; break;
-            default: genderStr = genderStr + ":eight_spoked_asterisk:";
+            case "n": genderStr=genderStr + ":eight_spoked_asterisk:"; break;
+            default: return false;
         }
     }
     return genderStr;;

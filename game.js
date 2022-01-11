@@ -17,6 +17,7 @@ module.exports = class Game {
         this.gameinprogress=false;  this.prefix="//";               this.maxplayer=20;
         this.handsize=10;           this.currentplayer=undefined;   this.randoplayed=false;
         this.playWaiting=false;     this.guild=undefined;           this.newIndex=0;
+        this.cleaner.addSentMessageTypeSingle("new");
         this.cleaner.addSentMessageTypePlayers("hand");
         this.cleaner.addSentMessageTypePlayers("instruct");
         this.cleaner.addSentMessageTypePlayers("judgecard");
@@ -90,7 +91,7 @@ module.exports = class Game {
         this.cleaner.sendReplyMessage(msg, "other", "Category for game channels is: " + this.cleaner.folderName + "\nEdit using command " + this.prefix + "editfolder");
     }
     async viewcards(msg){
-        var cards = await Playdeck.makeplaydeck(true);
+        var cards = await Playdeck.makeplaydeck(msg, this.cleaner);
         for(var i=0;i<cards.length;i++){
             this.cleaner.sendPermanentReplyMessage(msg, "[**" + (i+1) + "**] : " + cards[i]["fulltext"]);
         }
@@ -100,13 +101,13 @@ module.exports = class Game {
         this.cleaner.receivedGeneralMessage("other",msg);
         if(!this.checks(msg, false, true, false, false, false, false, false, false)){return;}
         this.cleaner.setMainChannel(msg.channel, clientID);
-        var cardList = await Playdeck.makeplaydeck(this.includeDescription);
+        var cardList = await Playdeck.makeplaydeck(msg, this.cleaner);
         this.deck = new Deck("Slash",  cardList, this.cleaner, true);
         this.playarea = [];             this.judgecard=undefined;      this.players=[];
         this.groups=[];                 this.randocount=0;      this.gameinprogress=true;
         this.currentplayer=undefined;   this.randoplayed=false; this.guild=msg.guild;
         this.playWaiting=false;         this.newIndex=0;
-        this.cleaner.sendReplyMessage(msg,"other","New game started. Type **" + this.prefix + "join** to play.");
+        this.cleaner.sendReplyMessage(msg,"new","New game started. Type **" + this.prefix + "join** to play.");
     }
     async endgame(msg,checkEnd)
     {
