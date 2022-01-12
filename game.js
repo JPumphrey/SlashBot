@@ -9,7 +9,7 @@ const Playdeck = require('./playdeck.js');
 module.exports = class Game {
     constructor()
     {
-        this.cleaner = new Cleaner("Slash");    
+        this.cleaner = new Cleaner("Slash");    this.test=0;    
         this.deck = undefined;      this.includeDescription=false;
         this.randodeck = new Deck("Rando", randos.makerandodeck(), this.cleaner, true);
         this.playarea = [];         this.judgecard=undefined;       this.players=[];
@@ -59,7 +59,6 @@ module.exports = class Game {
             }
         }   
      }
-
     splitStr(text,splChar){
         text=text.trim();       var text1=text; var text2="";   var spFind = text.indexOf(splChar);
         if(spFind !== -1){

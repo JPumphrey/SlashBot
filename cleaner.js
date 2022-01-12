@@ -132,37 +132,40 @@ module.exports = class Cleaner{
         }
         this.sentMsgsByPlayer.push({name: typeName, messageList: newList});
     }
-    async resetMessage(msgObj){
-        if(msgObj!==undefined){
-            await Promise.resolve(msgObj).then(async msg=>{
-                if(msg.deletable===true){
-                    try{await msg.delete();}catch{await setTimeout(async (msg)=> {try{await msg.delete()}catch{}}, 100);}
-                }
-                msgObj=undefined;
-                return msgObj;
-            });
-        }else{return msgObj;}
+    async resetMessage(msgList){
+        if(msgList==undefined){return [];}
+        if(!Array.isArray(msgList)){msgList = [msgList];}
+        for(var i=0;i<msgList.length;i++){
+            var msgObj = msgList[i];
+            if(msgObj!==undefined){
+                await Promise.resolve(msgObj).then(async msg=>{
+                    if(msg.deletable===true){
+                        try{await msg.delete();}
+                        catch{
+                            await this.wait(100);
+                            try{await msg.delete();}catch{}
+                        }
+                    }
+                });
+            }
+        }
+        return [];
     }
     async sendReplyMessage(receiveMsg, msgType, msgContent){
         var msgObj = this.sentMsgs.find(x=>x.name===msgType);
         if(msgObj===undefined){msgObj=this.sentMsgs[0];}
         await this.resetMessage(msgObj.message);
-        try{msgObj.message = await receiveMsg.reply(msgContent);}
-        catch{msgObj.message= await setTimeout(async ()=> {try{return await receiveMsg.reply(msgContent)}catch{return undefined;}}, 250);}
+        msgObj.message = await this.privateReplyToMessage(receiveMsg, msgContent);
+        
     }
     async sendPermanentReplyMessage(receiveMsg,msgContent){
-        try{return await receiveMsg.reply(msgContent);}catch{return await setTimeout(async ()=> {try{return await receiveMsg.reply(msgContent)}catch{return undefined;}}, 250);}
+        await  this.privateReplyToMessage(receiveMsg, msgContent);
     }
-    async sendGeneralMessage(receiveMsg, msgType, msgContent){
+    async sendGeneralMessage(msgType, msgContent){
         var msgObj = this.sentMsgs.find(x=>x.name===msgType);
         if(msgObj===undefined){msgObj=this.sentMsgs[0];}
         await this.resetMessage(msgObj.message);
-        try{msgObj.message=await this.mainChannel.send(msgContent)}
-        catch{msgObj.message= await setTimeout(async ()=> {
-            try{return await this.mainChannel.send(msgContent)}
-            catch{try{return await receiveMsg.reply(msgContent);}
-                catch{return undefined}
-            }}, 250);}
+        msgObj.message = await this.privateMessageToChannel(this.mainChannel, msgContent);
     }
     async sendMessageToAllPlayers(msgType, msgContent){
         var msgObj = this.sentMsgsByPlayer.find(x=>x.name===msgType);
@@ -170,8 +173,7 @@ module.exports = class Cleaner{
         for(var i=0;i<msgObj.messageList.length;i++){
             await this.resetMessage(msgObj.messageList[i]);
             if(this.playerChannels[i]!==undefined){
-                try{msgObj.messageList[i]=await this.playerChannels[i].send(msgContent)}
-                catch{msgObj.messageList[i]=setTimeout(async ()=> {try{return await this.playerChannels[i].send(msgContent)}catch{return undefined;}}, 250);}
+                msgObj.messageList[i] = await this.privateMessageToChannel(this.playerChannels[i], msgContent);
             }
         }
     }
@@ -180,29 +182,28 @@ module.exports = class Cleaner{
         if(msgObj===undefined){msgObj=this.sentMsgsByPlayer[0];}
         await this.resetMessage(msgObj.messageList[playerIndex]);
         if(this.playerChannels[playerIndex]!==undefined){
-            try{msgObj.messageList[playerIndex]=await this.playerChannels[playerIndex].send(msgContent)}
-            catch{msgObj.messageList[playerIndex]=setTimeout(async ()=> {try{return await this.playerChannels[playerIndex].send(msgContent)}catch{return undefined;}}, 250);}
+            msgObj.messageList[playerIndex]=await this.privateMessageToChannel(this.playerChannels[playerIndex], msgContent);
         }
     }
     async receivedGeneralMessage(msgType, receivedMessage){
         var msgObj = this.receiveMsgs.find(x=>x.name===msgType);
         if(msgObj===undefined){msgObj=this.receiveMsgs[0];}
         await this.resetMessage(msgObj.message);
-        msgObj.message=receivedMessage;
+        msgObj.message=[receivedMessage];
     }
     async receivedMessageFromSinglePlayer(msgType, receivedMessage, playerIndex){
         var msgObj = this.receiveMsgsByPlayer.find(x=>x.name===msgType);
         if(msgObj===undefined){msgObj=this.receiveMsgsByPlayer[0];}
         await this.resetMessage(msgObj.messageList[playerIndex]);
-        msgObj.messageList[playerIndex]=receivedMessage;
+        msgObj.messageList[playerIndex]=[receivedMessage];
     }
     async sendGeneralPermanentMessage(msgContent){
-        try{await this.mainChannel.send(msgContent);}catch{await setTimeout(async ()=> {try{return await this.mainChannel.send(msgContent)}catch{return undefined;}}, 250);}
+        await this.privateMessageToChannel(this.mainChannel, msgContent);
     }
     async sendPermanentMessageToPlayers(msgContent){
         for(var i=0;i<this.playerChannels.length;i++){
             if(this.playerChannels[i]!==undefined){
-                try{await this.playerChannels[i].send(msgContent);}catch{await setTimeout(async ()=> {try{return await this.playerChannels[i].send(msgContent)}catch{return undefined;}}, 250);}
+                await this.privateMessageToChannel(this.playerChannels[i],msgContent);
             }
         }
     }
@@ -211,8 +212,7 @@ module.exports = class Cleaner{
         for(var i=0;i<msgObj.messageList.length;i++){
             await this.resetMessage(msgObj.messageList[i]);
             if(this.playerChannels[i]!==undefined){
-                try{msgObj.messageList[i]=await this.playerChannels[i].send(msgContent)}
-                catch{msgObj.messageList[i]=await setTimeout(async ()=> {try{return await this.playerChannels[i].send(msgContent)}catch{return undefined;}}, 250);}
+                msgObj.messageList[i]=await this.privateMessageToChannel(this.playerChannels[i],msgContent);
             }
         }   
     }
@@ -221,8 +221,7 @@ module.exports = class Cleaner{
         for(var i=0;i<msgObj.messageList.length;i++){
             await this.resetMessage(msgObj.messageList[i]);
             if(this.playerChannels[i]!==undefined){
-                try{msgObj.messageList[i]=await this.playerChannels[i].send(msgContent)}
-                catch{msgObj.messageList[i]=await setTimeout(async ()=> {try{return await this.playerChannels[i].send(msgContent)}catch{return undefined;}}, 250);}
+                msgObj.messageList[i]=await this.privateMessageToChannel(this.playerChannels[i],msgContent);
             }
         }        
     }
@@ -231,7 +230,12 @@ module.exports = class Cleaner{
         this.msgCollected=false;    this.msgReturn=false;   var checkMsg;
         if(this.playerChannels[playerIndex]===undefined){return false;}
         try{checkMsg=await this.playerChannels[playerIndex].send(checkContent);}
-        catch{ checkMsg = await  setTimeout(async ()=> {try{return await this.playerChannels[playerIndex].send(checkContent)}catch{return undefined;}}, 250);}
+        catch{ 
+            await this.wait(250);
+            try{
+                checkMsg =await this.playerChannels[playerIndex].send(checkContent)
+            }catch{checkMsg=undefined}
+        }
         if(checkMsg==undefined){return false;}
         try{var collection=await this.playerChannels[playerIndex].awaitMessages({filter: m=>true, max: 1, time: 30000, errors: ['time'] });
             var msgReply=collection.first();
@@ -251,7 +255,12 @@ module.exports = class Cleaner{
         checkContent = checkContent + " Enter y to continue or anything else to cancel";
         this.msgCollected=false;    this.msgReturn=false;   var checkMsg;
         try{checkMsg=await msgChannel.send(checkContent);}
-        catch{ checkMsg = await  setTimeout(async ()=> {try{return await msgChannel.send(checkContent)}catch{return undefined;}}, 250);}
+        catch{
+            try{ 
+                await this.wait(250);
+                checkMsg = await msgChannel.send(checkContent);
+            }catch{checkMsg=undefined;}
+        }
         if(checkMsg==undefined){return false;}
         try{var collection=await msgChannel.awaitMessages({filter: m =>m.author.id===msgAuthorID, max: 1, time: 30000, errors: ['time'] });
             var msgReply=collection.first();
@@ -267,5 +276,70 @@ module.exports = class Cleaner{
         catch{if(!this.msgCollected){this.sendReplyMessage(msg, "other", cancelContent); this.msgCollected=true;}}
         try{await setTimeout(async (checkMsg)=> {try{await checkMsg.delete();}catch{}}, 5000);}catch{}
         return this.msgReturn;   
+    }
+    async privateMessageToChannel(channel, content){
+        var msgList=[];
+        while(content.length>1970){
+            var content2=""; [content2,content]=this.SplitMessage(content);
+            msgList=msgList.concat(await this.privateMessageToChannel(channel, content2));
+            await this.wait(250);
+        }
+        var newMsg=undefined;
+        try{newMsg=await channel.send(content);}
+        catch{
+            await this.wait(250);
+            try{
+                newMsg = await channel.send(content);
+            }catch{newMsg=undefined;}
+        }
+        if(newMsg!==undefined){msgList.push(newMsg);}
+        return msgList;
+    }
+    async  privateReplyToMessage(msg, content){
+        var msgList=[];
+        while(content.length>1970){
+            var content2=""; [content2,content]=this.SplitMessage(content);
+            msgList=msgList.concat(await this.privateReplyToMessage(msg, content2));
+            await this.wait(250);
+        }
+        var newMsg=undefined;
+        try{newMsg=await msg.reply(content);}
+        catch{
+            await this.wait(250);
+            try{
+                newMsg = await msg.reply(content);
+            }catch{newMsg=undefined;}
+        }
+        if(newMsg!==undefined){msgList.push(newMsg);}
+        return msgList;
+    }
+    SplitMessage(content){
+        content=content.trim();     var txtSplit1="";   var txtSplit2=content;
+        var spFind = txtSplit2.indexOf("\n");
+        if(spFind !== -1 && spFind+2<=1970){
+            while(txtSplit1.length+spFind+2<=1970 || txtSplit1===""){
+                txtSplit1=(txtSplit1!=="" ? txtSplit1+"\n" :"") + txtSplit2.substring(0, spFind);  
+                var txtSplit2=txtSplit2.substring(spFind+1);
+                spFind=txtSplit2.indexOf("\n");
+            }
+        }else{
+            var spFind = txtSplit2.indexOf(" ");
+            if(spFind !== -1 && spFind+1<=1970){
+                while(txtSplit1.length+spFind+1<=1970 || txtSplit1===""){
+                    txtSplit1=(txtSplit1!=="" ? txtSplit1+" " :"") + txtSplit2.substring(0, spFind);  
+                    var txtSplit2=txtSplit2.substring(spFind);
+                    spFind=txtSplit2.indexOf(" ");
+                }
+            }else{
+                txtSplit1=content.substring(0,1970);
+                txtSplit2=content.substring(1971);
+            }
+        }
+        return [txtSplit1, txtSplit2];
+    }
+    async wait(ms) {
+        return new Promise(resolve => {
+          setTimeout(resolve, ms);
+        });
     }
 }
